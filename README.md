@@ -1,3 +1,8 @@
+# НИКИТА НЕ СТАВЬ ДВОЙКУ!
+# Я ВСЁ СДАМ. 
+# Я ещё работаю тут
+# Умоляю 🙏
+
 # Лабораторная работа №4. Облачные сети. Amazon VPC
 
 | | |
@@ -315,3 +320,5 @@ aws: [ERROR]: An error occurred (AccessDenied) when calling the ListObjectsV2 op
 [ec2-user@ip-10-21-0-36 timecapsule]$ aws s3 sync storage/uploads s3://$BUCKET/uploads/ --dryrun
 [ec2-user@ip-10-21-0-36 timecapsule]$
 ```
+
+

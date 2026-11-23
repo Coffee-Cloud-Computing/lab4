@@ -1,8 +1,3 @@
-# НИКИТА НЕ СТАВЬ ДВОЙКУ!
-# Я ВСЁ СДАМ. 
-# Я ещё работаю тут
-# Умоляю 🙏
-
 # Лабораторная работа №4. Облачные сети. Amazon VPC
 
 | | |
@@ -321,4 +316,144 @@ aws: [ERROR]: An error occurred (AccessDenied) when calling the ListObjectsV2 op
 [ec2-user@ip-10-21-0-36 timecapsule]$
 ```
 
+>Да, прав хватило: aws s3 sync выполнился без AccessDenied, хотя у роли сервера есть только политика timecapsule-dev-app-s3. Команда использовала два разрешённых действия:
+>
+  >1. s3:ListBucket. Перед копированием sync запрашивает список объектов под uploads/ (вызов ListObjectsV2 с prefix=uploads/), чтобы сравнить бакет с локальной папкой по имени, размеру и времени изменения. Запрос прошёл, потому что префикс uploads/ удовлетворяет условию s3:prefix = uploads/*.
+  >2. s3:PutObject. Новые и изменённые файлы загружаются вызовом PutObject с ключами uploads/<имя>, что разрешено для ресурса arn:aws:s3:::timecapsule-dev-uploads-coffee/uploads/*.
 
+### Задание 11. Модуль хранения на S3
+
+1. Подключаем SDK в репозитории приложения командой `composer require aws/aws-sdk-php`. Если Composer установлен только на сервере, выполните команду там во временной копии репозитория и закоммитьте изменённые composer.json и composer.lock.
+
+```powershell
+PS D:\USM\III-st year\Cloud Computing> composer --version
+Composer version 2.9.7 2026-04-14 13:31:52
+PHP version 8.5.3 (C:\Program Files\php\php.exe)
+Run the "diagnose" command to get more detailed diagnostics output.
+PS D:\USM\III-st year\Cloud Computing> cd "D:\USM\III-st year\Cloud Computing\lab 2\timecapsule"
+>> 
+PS D:\USM\III-st year\Cloud Computing\lab 2\timecapsule> composer require aws/aws-sdk-php
+./composer.json has been updated
+Running composer update aws/aws-sdk-php
+Loading composer repositories with package information
+Updating dependencies
+Lock file operations: 12 installs, 0 updates, 0 removals
+```
+
+2. Добавьте настройки в .env.example и в /var/www/timecapsule/.env на сервере:
+
+![alt text](<images/adding env variables at server env fie.png>)![alt text](<images/adding env variables at repo env fie.png>)
+
+3. Переписываем модуль хранения так, чтобы он работал только с S3. Кроме модуля, в приложении меняется только надпись в подвале страницы.
+
+### Задание 12. Деплой и проверка
+
+1. Выпустите новую версию своим способом из ЛР2 и ЛР3. Не забудьте выполнить composer install (в проекте появилась новая библиотека) и перезапустить приложение, как в ЛР3, чтобы оно прочитало новые настройки из .env.
+
+   ```cmd
+   [ec2-user@ip-10-21-0-36 timecapsule]$ cd timecapsule && composer install --no-dev --optimize-autoloader
+    Installing dependencies from lock file
+    Verifying lock file contents can be installed on current platform.
+    Package operations: 12 installs, 0 updates, 0 removals
+      - Downloading symfony/filesystem (v7.4.23)
+      - Downloading psr/http-message (2.0)
+      - Downloading mtdowling/jmespath.php (2.10.0)
+      - Downloading symfony/polyfill-php82 (v1.43.0)
+      - Downloading symfony/deprecation-contracts (v3.8.1)
+      - Downloading psr/http-factory (1.1.0)
+      - Downloading guzzlehttp/psr7 (3.5.1)
+      - Downloading guzzlehttp/promises (3.2.0)
+      - Downloading psr/http-client (1.0.3)
+      - Downloading guzzlehttp/guzzle (8.5.4)
+      - Downloading aws/aws-crt-php (v1.2.7)
+      - Downloading aws/aws-sdk-php (3.407.1)
+      - Installing symfony/filesystem (v7.4.23): Extracting archive
+      - Installing psr/http-message (2.0): Extracting archive
+      - Installing mtdowling/jmespath.php (2.10.0): Extracting archive
+      - Installing symfony/polyfill-php82 (v1.43.0): Extracting archive
+      - Installing symfony/deprecation-contracts (v3.8.1): Extracting archive
+      - Installing psr/http-factory (1.1.0): Extracting archive
+      - Installing guzzlehttp/psr7 (3.5.1): Extracting archive
+      - Installing guzzlehttp/promises (3.2.0): Extracting archive
+      - Installing psr/http-client (1.0.3): Extracting archive
+      - Installing guzzlehttp/guzzle (8.5.4): Extracting archive
+      - Installing aws/aws-crt-php (v1.2.7): Extracting archive
+      - Installing aws/aws-sdk-php (3.407.1): Extracting archive
+    Generating optimized autoload files
+    12 packages you are using are looking for funding.
+    Use the `composer fund` command to find out more!
+    [ec2-user@ip-10-21-0-36 timecapsule]$ sudo systemctl reload php-fpm
+   ```
+
+   ![alt text](<images/new version screen.png>)
+2. Новые капсулы. Создайте капсулу с картинкой и капсулу с PDF. Время открытия укажите через 2-3 минуты: приложение не принимает время в прошлом, а вложение запечатанной капсулы не показывает.
+   * Найдите новые объекты под uploads/ и проверьте их Content-Type.![alt text](images/photoOfNewCapsule.png)![alt text](images/photoOfOpenedCapsule.png)
+   * Когда капсулы откроются, откройте картинку в новой вкладке: в адресной строке должен оказаться адрес ...s3.eu-central-1.amazonaws.com/uploads/... с параметрами X-Amz-*. Скачайте PDF и проверьте, что он сохранился под исходным именем. ![alt text](images/linkFromPhoto.png)![alt text](images/initilaPhotoName.png)
+3. Срок ссылки. Скопируйте адрес картинки из адресной строки, подождите 5 минут и откройте его снова.![alt text](<images/linkFromPhotoAfter 5 minutes.png>)
+4. Удаление. Удалите капсулу с вложением и найдите её объект в консоли с включённым Show versions.![alt text](<images/photo after delete capsule in console .png>)
+
+>Подписанный URL действует только 5 минут: срок входит в подпись, и после него S3 отвечает Request has expired, а изменить срок или ключ в ссылке нельзя без SignatureDoesNotMatch. Новые ссылки приложение выдаёт только владельцу, после проверки прав на капсулу, поэтому пересланная ссылка сама перестанет работать. Удаление капсулы вызвало deleteObject без версии, и S3 из-за версионирования не стёр файл, а положил маркер удаления, оставив сам файл неактуальной версией. По правилу жизненного цикла эта версия через 30 дней перейдёт в Standard-IA (если она не меньше 128 КБ), а через 90 дней удаляются неактуальные версии, кроме двух самых новых. У удалённого вложения неактуальная версия всего одна, поэтому при нашей настройке она не удалится автоматически и останется вместе с маркером, пока её не удалят вручную.
+
+### Задание 13. Сервер без состояния
+
+1. Уберите локальные файлы. На app-server переместите папку с вложениями во временное место: sudo mv /var/www/timecapsule/current/storage/uploads ~/uploads-backup
+
+  ```cd
+  [ec2-user@ip-10-21-0-36 ~]$ cd /var/www/timecapsule/
+  [ec2-user@ip-10-21-0-36 timecapsule]$ cd timecapsule/
+  [ec2-user@ip-10-21-0-36 timecapsule]$ ls
+  Dockerfile  bin            composer.lock  deploy  docker-compose.yml  src      vendor
+  README.md   composer.json  database       docker  public              storage  views
+  [ec2-user@ip-10-21-0-36 timecapsule]$ cd storage/
+  [ec2-user@ip-10-21-0-36 storage]$ ls
+  sessions  uploads
+  [ec2-user@ip-10-21-0-36 storage]$ sudo mv /var/www/timecapsule/timecapsule/storage/uploads ~/uploads-backup
+  ```
+
+2. Проверяем приложение. Открываем старые и новые капсулы, капсула показанная в предидущем примере по ошибке была удалена 😅, создём ещё одну с вложением. Всё работает, удаляем копию: sudo rm -rf ~/uploads-backup. Если нет, верните папку на место и найдите, какая часть кода всё ещё обращается к диску.![alt text](<images/Capsules after removing uplodes.png>)
+3. Уменьшите права. Приложению не нужен список объектов: s3:ListBucket использовала только команда aws s3 sync в задании 10.
+     1. Создайте новую версию политики timecapsule-dev-app-s3 без правила с s3:ListBucket.![alt text](<images/editing app s3 policy.png>)
+     2. Проверьте, что приложение по-прежнему работает, а команда aws s3 ls s3://$BUCKET/uploads/ на сервере получает AccessDenied.
+      ```cmd
+      [ec2-user@ip-10-21-0-36 ~]$ aws s3 ls s3://$BUCKET/uploads/
+
+      aws: [ERROR]: An error occurred (AccessDenied) when calling the ListObjectsV2 operation: User: arn:aws:sts::720466550942:assumed-role/timecapsule-dev-app-role/i-00f607aa34c6cdcc7 is not authorized to perform: s3:ListBucket on resource: "arn:aws:s3:::timecapsule-dev-uploads-coffee" because no identity-based policy allows the s3:ListBucket action
+      ```
+
+4. Запросите несуществующий объект командой aws s3 cp s3://$BUCKET/uploads/no-such-file.txt - дважды: на сервере и в CloudShell под своим пользователем. Сравните ответы.
+```cmd
+aws s3 cp s3://timecapsule-dev-uploads-coffee/uploads/no-such-file.txt -
+download failed: s3://timecapsule-dev-uploads-coffee/uploads/no-such-file.txt to - An error occurred (404) when calling the HeadObject operation: Not Found
+```
+
+```cmd
+[ec2-user@ip-10-21-0-36 ~]$ aws s3 cp   s3://timecapsule-dev-uploads-coffee/uploads/no-such-file.txt -
+download failed: s3://timecapsule-dev-uploads-coffee/uploads/no-such-file.txt to - An error occurred (403) when calling the HeadObject operation: Forbidden
+```
+
+>S3 вернул серверу 403 AccessDenied, поскольку IAM-роль приложения не имеет разрешения s3:ListBucket. CloudShell получил 404 Not Found, так как IAM-пользователь имеет это разрешение и S3 может подтвердить отсутствие объекта. Такое поведение защищает информацию о содержимом бакета от посторонних.
+>>
+>Чтобы заменить app-server, достаточно создать новый EC2-инстанс, привязать к нему IAM-роль timecapsule-dev-app-role, развернуть приложение и подключить его к тому же S3-бакету. Переносить вложения не нужно, поскольку они хранятся отдельно от сервера.
+
+### Задание 14. Архитектура и решение
+
+1. Компонент диаграмма решения ![alt text](<images/AWS-S3 infrastructure.png>)
+2. Запишите решение в файл [docs/adr/0003-attachment-storage.md по шаблону ADR из ЛР2](docs/adr/0003-attachment-storage.md).
+
+### Контрольные вопросы
+
+#### **1. Как проходит запрос на скачивание вложения?**
+
+Пользователь нажимает ссылку, приложение проверяет его права на доступ к капсуле и создаёт подписанный URL через AWS SDK. Браузер переходит по этой ссылке и скачивает файл напрямую из S3, минуя сервер приложения. На стороне S3 проверяются подпись URL, срок её действия и права IAM-роли сервера, от имени которой была создана ссылка.
+
+#### **2. Какие настройки бакета и свойства подписанного URL защищают вложения?**
+
+В бакете включён Block Public Access, отсутствует публичный доступ, а политика запрещает запросы без HTTPS. Подписанный URL содержит криптографическую подпись, привязанную к конкретному объекту и сроку действия (5 минут), поэтому нельзя изменить ключ объекта или использовать ссылку после истечения срока.
+
+#### **3. Почему приложение отдаёт файлы через подписанный URL, а не открывает бакет для чтения всем?**
+
+Подписанные URL позволяют предоставлять временный доступ только к конкретному файлу, не открывая весь бакет посторонним. При этом файлы скачиваются напрямую из S3, что снижает нагрузку на сервер приложения и упрощает масштабирование.
+
+#### **4. Как изменится схема, если вложения должны пережить отказ всего региона eu-central-1?**
+
+Нужно настроить репликацию объектов S3 в другой регион AWS, например `us-east-1`, и обеспечить копирование версий объектов. При отказе основного региона приложение должно переключиться на резервный бакет, используя его регион и соответствующие настройки доступа. Для автоматического переключения потребуется дополнительно настроить механизм обнаружения отказа и маршрутизации запросов.
